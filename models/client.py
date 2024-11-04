@@ -53,11 +53,11 @@ class Client:
         return buffer.strip()
     
     def connected(self):
-        if self.sock == None:
+        if self._sock == None:
             return False
         
         try:
-            self.sock.getpeername()
+            self._sock.getpeername()
             return True
         except socket.error:
             return False
