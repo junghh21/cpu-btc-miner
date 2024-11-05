@@ -7,5 +7,9 @@ Created on Sun Nov  3 23:44:35 2024
 """
 
 class Worker:
-    def __init__(self, nome):
-        self.nome = nome 
+    def __init__(self, extranonce1, extranonce_size):
+        self.extranonce1 = extranonce1
+        self.extranonce_size = extranonce_size
+        self.extranonce2 = None
+        self.worker_name = None
+        self.worker_pass = None
