@@ -9,7 +9,8 @@ Created on Sun Nov  3 22:10:04 2024
 import random
 import time
 import hashlib
-from models import Miner, Worker
+import struct
+import binascii
 
 def current_time_millis():
     return int(time.time() * 1000)
@@ -42,9 +43,36 @@ def get_next_extranonce2(extranonce2_size, extranonce2):
 
     return extranonce2
 
-def calculate_mining_data(worker, mine_job):
-    
-    miner = Miner()
+def le256todouble(target):
+    dcut64 = struct.unpack_from('<Q', target, 24)[0] * 6277101735386680763835789423207666416102355444464034512896.0
+    dcut64 += struct.unpack_from('<Q', target, 16)[0] * 340282366920938463463374607431768211456.0
+    dcut64 += struct.unpack_from('<Q', target, 8)[0] * 18446744073709551616.0
+    dcut64 += struct.unpack_from('<Q', target, 0)[0]
+    return dcut64
+
+def diff_from_target(target):
+    TRUEDIFFONE = 26959535291011309493156476344723991336010898738574164086137773096960.0
+    dcut64 = le256todouble(target)
+    if dcut64 == 0:
+        dcut64 = 1
+    return TRUEDIFFONE / dcut64
+
+def get_share_target(difficulty):
+    TRUEDIFFONE = 26959535291011309493156476344723991336010898738574164086137773096960.0
+    return int(TRUEDIFFONE / difficulty)
+
+def double_sha256(data):
+    return hashlib.sha256(hashlib.sha256(data).digest()).digest()
+
+def merkle_root(coinbase_tx_hash, merkle_branches):
+    current_hash = bytes.fromhex(coinbase_tx_hash)
+    for branch in merkle_branches:
+        branch_hash = bytes.fromhex(branch)
+        # Concatenate the hashes and compute the double SHA-256 hash
+        current_hash = double_sha256(current_hash + branch_hash)
+    return current_hash.hex()
+
+def calculate_mining_data(miner, worker, mine_job):
     
     # Calculating target
     exponent = int(mine_job.nbits[:2], 16)
@@ -76,18 +104,67 @@ def calculate_mining_data(worker, mine_job):
     # Building coinbase
     coinbase = mine_job.coinb1 + worker.extranonce1 + worker.extranonce2 + mine_job.coinb2
     print("    coinbase: ", coinbase)
+    print("    extranonce1: ", worker.extranonce1)
+    print("    extranonce2: ", worker.extranonce2)
     
-    coinbase_bytes = bytes.fromhex(coinbase)
+    coinbase_tx = double_sha256(bytes.fromhex(coinbase)).hex()
+    miner.merkle_result = coinbase_tx  # in bytes
     
-    # Calculating double SHA-256 from coinbase
-    inter_result = hashlib.sha256(coinbase_bytes).digest()
-    sha_result = hashlib.sha256(inter_result).digest()
+    # Calculating Merkle Root
+    merkle_r = merkle_root(coinbase_tx, mine_job.merkle_branch)
+    miner.merkle_result = merkle_r
     
-    miner.merkle_result = sha_result  # in bytes
+    print("    merkle_root: ", )
     
+    # Changing version
+    version_int = int(mine_job.version, 16)
+    versionmask_int = int(miner.version_mask, 16)
+    
+    new_version_int = version_int | (versionmask_int & 0x1fffe000)
+    new_version_hex = f"{new_version_int:08x}"
+    
+    print("   NEW VERSION:", new_version_hex)
+    
+    # Building block header in big endian
+    blockheader = (
+        #mine_job.version +
+        new_version_hex +
+        mine_job.prev_block_hash + # ORIGINAL
+        merkle_r +
+        mine_job.ntime +
+        mine_job.nbits +
+        "00000000"  # Starting nonce
+    )
+    print("    blockheader:", blockheader)
+    
+    blockheader_bytes = bytes.fromhex(blockheader)
+    miner.bytearray_blockheader = bytearray(blockheader_bytes)
 
-#calculateMiningData()
+    # Inverting version (4 bytes)
+    miner.bytearray_blockheader[0:4] = miner.bytearray_blockheader[0:4][::-1]
+    
+    # Inverting prevhash (swaping words of 4 bytes)
+    prevhash = miner.bytearray_blockheader[4:36]
+    swapped_prevhash = bytearray()
+    for i in range(0, len(prevhash), 4):
+        word = prevhash[i:i+4][::-1]
+        swapped_prevhash.extend(word)
+    miner.bytearray_blockheader[4:36] = swapped_prevhash
+    print("   prev hash:", miner.bytearray_blockheader[4:36].hex())
+    
+    # Inverting merkle_root 
+    # NAO TEM QUE INVERTER ESSE CARALHO
+    #miner.bytearray_blockheader[36:68] = miner.bytearray_blockheader[36:68][::-1]
+    
+    # Inverting timestamp (4 bytes)
+    miner.bytearray_blockheader[68:72] = miner.bytearray_blockheader[68:72][::-1]
+    
+    # Inverting difficulty (4 bytes)
+    miner.bytearray_blockheader[72:76] = miner.bytearray_blockheader[72:76][::-1]
 
+
+    # cd1be82132ef0d12053dcece1fa0247fcfdb61d4dbd3eb32ea9ef9b4c604a846
+    # cd1be82132ef0d12053dcece1fa0247fcfdb61d4dbd3eb32ea9ef9b4c604a846
 
 
 
