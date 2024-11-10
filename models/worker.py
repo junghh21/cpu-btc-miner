@@ -7,9 +7,14 @@ Created on Sun Nov  3 23:44:35 2024
 """
 
 class Worker:
-    def __init__(self, extranonce1, extranonce_size):
-        self.extranonce1 = extranonce1
-        self.extranonce_size = extranonce_size
+    def __init__(self):
+        self.subscribed = False
+        self.extranonce1 = None
+        self.extranonce_size = None
         self.extranonce2 = None
         self.worker_name = None
         self.worker_pass = None
+        self.miner = None
+        self.online = True
+        self.templates = 0
+        self.best_diff = 0

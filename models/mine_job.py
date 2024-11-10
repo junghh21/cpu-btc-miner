@@ -17,4 +17,3 @@ class MineJob:
         self.nbits = nbits
         self.ntime = ntime
         self.clean_jobs = clean_jobs
-

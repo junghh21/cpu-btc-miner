@@ -10,7 +10,6 @@ import random
 import time
 import hashlib
 import struct
-import binascii
 
 def current_time_millis():
     return int(time.time() * 1000)
@@ -72,7 +71,10 @@ def merkle_root(coinbase_tx_hash, merkle_branches):
         current_hash = double_sha256(current_hash + branch_hash)
     return current_hash.hex()
 
-def calculate_mining_data(miner, worker, mine_job):
+def calculate_mining_data(worker):
+    
+    miner = worker.miner
+    mine_job = worker.miner.job
     
     # Calculating target
     exponent = int(mine_job.nbits[:2], 16)
@@ -80,7 +82,7 @@ def calculate_mining_data(miner, worker, mine_job):
     
     target = significand + ('00' * (exponent - 3))
     target = target.zfill(64)
-    print("    target: ", target)
+    print("[Header] Target: ", target)
     
     bytearray_target = bytearray.fromhex(target)
     
@@ -103,39 +105,37 @@ def calculate_mining_data(miner, worker, mine_job):
 
     # Building coinbase
     coinbase = mine_job.coinb1 + worker.extranonce1 + worker.extranonce2 + mine_job.coinb2
-    print("    coinbase: ", coinbase)
-    print("    extranonce1: ", worker.extranonce1)
-    print("    extranonce2: ", worker.extranonce2)
+    print("[Header] Coinbase: ", coinbase)
+    print("[Header] Extranonce1: ", worker.extranonce1)
+    print("[Header] Extranonce2: ", worker.extranonce2)
     
     coinbase_tx = double_sha256(bytes.fromhex(coinbase)).hex()
-    miner.merkle_result = coinbase_tx  # in bytes
     
     # Calculating Merkle Root
     merkle_r = merkle_root(coinbase_tx, mine_job.merkle_branch)
     miner.merkle_result = merkle_r
     
-    print("    merkle_root: ", )
+    print("[Header] Merkle root:", merkle_r)
     
     # Changing version
     version_int = int(mine_job.version, 16)
     versionmask_int = int(miner.version_mask, 16)
     
-    new_version_int = version_int | (versionmask_int & 0x1fffe000)
+    new_version_int = version_int | versionmask_int
     new_version_hex = f"{new_version_int:08x}"
     
-    print("   NEW VERSION:", new_version_hex)
+    print("[Header] New version:", new_version_hex)
     
     # Building block header in big endian
     blockheader = (
-        #mine_job.version +
         new_version_hex +
-        mine_job.prev_block_hash + # ORIGINAL
+        mine_job.prev_block_hash + 
         merkle_r +
         mine_job.ntime +
         mine_job.nbits +
         "00000000"  # Starting nonce
     )
-    print("    blockheader:", blockheader)
+    print("[Header] Blockheader:", blockheader)
     
     blockheader_bytes = bytes.fromhex(blockheader)
     miner.bytearray_blockheader = bytearray(blockheader_bytes)
@@ -150,21 +150,13 @@ def calculate_mining_data(miner, worker, mine_job):
         word = prevhash[i:i+4][::-1]
         swapped_prevhash.extend(word)
     miner.bytearray_blockheader[4:36] = swapped_prevhash
-    print("   prev hash:", miner.bytearray_blockheader[4:36].hex())
-    
-    # Inverting merkle_root 
-    # NAO TEM QUE INVERTER ESSE CARALHO
-    #miner.bytearray_blockheader[36:68] = miner.bytearray_blockheader[36:68][::-1]
-    
+    print("[Header] Prev hash:", miner.bytearray_blockheader[4:36].hex())
+     
     # Inverting timestamp (4 bytes)
     miner.bytearray_blockheader[68:72] = miner.bytearray_blockheader[68:72][::-1]
     
     # Inverting difficulty (4 bytes)
     miner.bytearray_blockheader[72:76] = miner.bytearray_blockheader[72:76][::-1]
-
-
-    # cd1be82132ef0d12053dcece1fa0247fcfdb61d4dbd3eb32ea9ef9b4c604a846
-    # cd1be82132ef0d12053dcece1fa0247fcfdb61d4dbd3eb32ea9ef9b4c604a846
 
 
 

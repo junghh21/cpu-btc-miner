@@ -15,7 +15,7 @@ class Client:
         self._host = host
         self._port = port
         self._sock = None
-        self.last_message_pool = self._current_time_millis()
+        self._last_message_pool = self._current_time_millis()
         
     def connect_pool(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,7 +52,7 @@ class Client:
     
     def check_pool_inactivity(self, limit_silence_time):
         actual_millis = self._current_time_millis()
-        return actual_millis - self.last_message_pool > limit_silence_time
+        return actual_millis - self._last_message_pool > limit_silence_time
     
     def send_message(self, payload):
         json_message = json.dumps(payload) + '\n'
@@ -60,7 +60,7 @@ class Client:
         try:
             bytes_sent = self._sock.send(json_message.encode())
             if bytes_sent == len(json_message.encode()):
-                self.last_message_pool = self._current_time_millis()
+                self._last_message_pool = self._current_time_millis()
                 return True
             else:
                 return False
@@ -78,6 +78,7 @@ class Client:
                 break
             
         if buffer != "":
+            self._last_message_pool = self._current_time_millis()
             print("[Client] Received from pool:", buffer)
             
         return buffer.strip()
