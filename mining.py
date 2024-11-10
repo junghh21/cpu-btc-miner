@@ -168,6 +168,7 @@ def run_miner(miner_id, client: Client, worker: Worker, stop_thread):
             
             if difficulty >= miner.pool_difficulty:
                 
+                # TODO: Calculate hashrate for all threads
                 elapsed_time = time.time() - start_time
                 if elapsed_time > 0:
                     hashes_per_second = hash_count / elapsed_time
@@ -181,7 +182,7 @@ def run_miner(miner_id, client: Client, worker: Worker, stop_thread):
                 print(f"-> Pool difficulty: {miner.pool_difficulty}")
                 print(f"-> Best difficulty: {round(worker.best_diff, 3)}")
                 print(f"-> Hash: {hash_result[::-1].hex()}")                
-                print(f"-> Hashrate: {hashes_per_second:.2f} H/s")
+                print(f"-> Hashrate (per thread): {hashes_per_second:.2f} H/s")
                 
                 stratum_submit(
                     client, 
