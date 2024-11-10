@@ -52,6 +52,7 @@ def start_stratum(client, worker: Worker, suggest_difficulty):
             worker.extranonce1 = extranonce1
             worker.extranonce_size = extranonce_size
             
+            # TODO: Make this optional in a way that the version mask can't be necessary
             stratum_configure(client)
             
             success_auth = stratum_authorize(client, worker.worker_name, worker.worker_pass)
@@ -142,6 +143,9 @@ def run_miner(miner_id, client: Client, worker: Worker, stop_thread):
         nonce = TARGET_NONCE - MAX_NONCE
         nonce += miner_id # Odd or even
         
+        hash_count = 0
+        start_time = time.time()
+        
         print("[MINER] Started hashing nonces")
         while not stop_thread.is_set():
             
@@ -155,6 +159,7 @@ def run_miner(miner_id, client: Client, worker: Worker, stop_thread):
             miner.bytearray_blockheader[76:80] = struct.pack('<I', nonce)
             
             hash_result = double_sha256(miner.bytearray_blockheader)
+            hash_count += 1
         
             difficulty = diff_from_target(hash_result)
             
@@ -162,13 +167,22 @@ def run_miner(miner_id, client: Client, worker: Worker, stop_thread):
                 worker.best_diff = difficulty
             
             if difficulty >= miner.pool_difficulty:
+                
+                elapsed_time = time.time() - start_time
+                if elapsed_time > 0:
+                    hashes_per_second = hash_count / elapsed_time
+                else:
+                    hashes_per_second = 0
+                
                 print("[MINER] SHARE FOUND!")
                 print(f"-> Nonce: {nonce}")
                 print(f"-> Miner who found: {miner_id}")
                 print(f"-> Share difficulty: {difficulty}")
                 print(f"-> Pool difficulty: {miner.pool_difficulty}")
                 print(f"-> Best difficulty: {round(worker.best_diff, 3)}")
-                print(f"-> Hash: {hash_result[::-1].hex()}")
+                print(f"-> Hash: {hash_result[::-1].hex()}")                
+                print(f"-> Hashrate: {hashes_per_second:.2f} H/s")
+                
                 stratum_submit(
                     client, 
                     worker.worker_name, 
@@ -178,6 +192,9 @@ def run_miner(miner_id, client: Client, worker: Worker, stop_thread):
                     f"{nonce:08x}",
                     miner.version_mask
                 )
+                
+                hash_count = 0
+                start_time = time.time()
             
             nonce += 2
         
