@@ -21,7 +21,7 @@ templates = 0
 
 running = True
 
-def start_stratum(client, worker: Worker, suggest_difficulty):
+def start_stratum(client, worker, suggest_difficulty):
     
     worker.miner = Miner()
     
@@ -126,7 +126,7 @@ def serve_forever(pool_host, pool_port, btc_address, worker_name, pool_pass, sug
 
     start_stratum(client, worker, suggested_difficulty)
         
-def run_miner(miner_id, client: Client, worker: Worker, stop_thread):
+def run_miner(miner_id, client, worker, stop_thread):
     
     print(f"[MINER] Init hashing with miner: {miner_id}")
     
