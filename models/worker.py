@@ -15,6 +15,5 @@ class Worker:
         self.worker_name = None
         self.worker_pass = None
         self.miner = None
-        self.online = True
         self.templates = 0
         self.best_diff = 0
