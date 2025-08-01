@@ -29,6 +29,7 @@ def start_stratum(client, worker, suggest_difficulty):
 	
 	print("[Mining] Starting stratum...")
 	
+	cnt_error = 0
 	while True:
 		
 		# TODO: Check wifi connection
@@ -74,6 +75,7 @@ def start_stratum(client, worker, suggest_difficulty):
 			method = stratum_parse_method(read)
 			if method == STRATUM_PARSE_ERROR:
 				print(f"[Notify] Error when parsing json: {read}")
+				cnt_error += 1
 			if method == MINING_NOTIFY:
 				job = stratum_parse_notify(read)
 				if job:
@@ -108,6 +110,10 @@ def start_stratum(client, worker, suggest_difficulty):
 				print("[Notify] Success when submiting!")
 			else:
 				print("[Notify] Unknown JSON")
+				cnt_error += 1
+			if cnt_error > 5:
+				client.disconnect_pool()
+				return
 		
 		time.sleep(1)
 
@@ -129,7 +135,8 @@ def serve_forever(pool_host, pool_port, btc_address, worker_name, pool_pass, sug
 	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
 	#threading.Thread(target=run_miner, args=(0x23000000, client, worker, stop_threads), daemon=True).start()
 	
-	start_stratum(client, worker, suggested_difficulty)
+	while(1):
+		start_stratum(client, worker, suggested_difficulty)
 		
 def run_miner(miner_id, client, worker, stop_thread):
 	
@@ -302,7 +309,7 @@ def run_miner2(miner_id, client, worker, stop_thread, ip):
 				with urllib.request.urlopen(req) as response:
 					raw = response.read().decode('utf-8')  # Decode bytes to string
 					data = json.loads(raw)                 # Parse JSON string to Python dict
-					print(data)
+					#print(data)
 		#{'result': 'True', 
 		# 'bin': 'aaac4ee23484886e88d28c58fa7a3ff5c6481786e94db9d67ab67d3a082c0400', 
 		# 'no': '9e11f494', 
@@ -331,21 +338,14 @@ def run_miner2(miner_id, client, worker, stop_thread, ip):
 def keep_alive(client, worker, stop_thread):
 	SILENCE_LIMIT = 15000
 	
-	cnt = 0
 	while not stop_thread.is_set():		
 		if client.check_pool_inactivity(SILENCE_LIMIT):
-			cnt+=1
-	 
+			pass
 			#print("[Keep Alive] Sending keep alive socket because 15 seconds without communication...")
-			res = stratum_suggest_difficulty(client, worker.miner.pool_difficulty)
-			if res == False:
-				print("[Keep Alive] Error when sending keep alive socket")
-			else:
-				print("[Keep Alive] Keep alive socket sent with success")
-
-			if cnt > 15:
-				start_stratum(client, worker, 0.001)
-		else:
-		 	cnt = 0
+			#res = stratum_suggest_difficulty(client, worker.miner.pool_difficulty)
+			#if res == False:
+			#	print("[Keep Alive] Error when sending keep alive socket")
+			#else:
+			#	print("[Keep Alive] Keep alive socket sent with success")
 		time.sleep(1)
 	
