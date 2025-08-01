@@ -53,7 +53,7 @@ def stratum_authorize(client, worker_name, pool_pass):
     
 def stratum_suggest_difficulty(client, difficulty):
     payload = {
-        "id": 4,
+        "id": 5,
         "method": "mining.suggest_difficulty",
         "params": [difficulty]
     }
@@ -75,9 +75,9 @@ def stratum_configure(client):
     else:
         return False
 
-def stratum_submit(client, worker_name, job_id, extranonce2, ntime, nonce, version_mask):
+def stratum_submit(client, worker_name, job_id, extranonce2, ntime, nonce):#, version_mask):
     payload = {
-        "id": 5,
+        "id": 4,
         "method": "mining.submit",
         "params": [
             worker_name,
@@ -85,7 +85,7 @@ def stratum_submit(client, worker_name, job_id, extranonce2, ntime, nonce, versi
             extranonce2,
             ntime,
             nonce,
-            version_mask
+            #version_mask
         ]
     }
     if client.send_message(payload):

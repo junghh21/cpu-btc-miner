@@ -119,7 +119,7 @@ def calculate_mining_data(worker):
     
     # Changing version
     version_int = int(mine_job.version, 16)
-    versionmask_int = int(miner.version_mask, 16)
+    versionmask_int = 0#int(miner.version_mask, 16)
     
     new_version_int = version_int | versionmask_int
     new_version_hex = f"{new_version_int:08x}"
