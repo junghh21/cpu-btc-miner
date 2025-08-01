@@ -70,6 +70,7 @@ class Client:
     def read_until_newline(self):
         buffer = ""
         while True:
+            self._sock.settimeout(30)
             chunk = self._sock.recv(1).decode()  # Read one byte
             if not chunk:  # If not more data
                 break

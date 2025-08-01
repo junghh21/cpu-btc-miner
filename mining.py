@@ -29,93 +29,93 @@ def start_stratum(client, worker, suggest_difficulty):
 	
 	print("[Mining] Starting stratum...")
 	
-	cnt_error = 0
-	while True:
-		
-		# TODO: Check wifi connection
-		
-		if not client.check_pool_connection():
-			print("[Mining] Server unreachable, waiting 2 minutes...")
+	try:
+		cnt_error = 0
+		while True:
 			
-			worker.subscribed = False
+			# TODO: Check wifi connection
 			
-			time.sleep(120)
-		
-		if not worker.subscribed:
+			if not client.check_pool_connection():
+				print("[Mining] Server unreachable, waiting 2 minutes...")
+				
+				worker.subscribed = False
+				
+				time.sleep(10)
 			
-			worker.miner.mining = False
+			if not worker.subscribed:
+				
+				worker.miner.mining = False
+				
+				extranonce1, extranonce_size = stratum_subscribe(client)
+				if not extranonce1 or not extranonce_size:
+					client.disconnect_pool()
+					continue
+				
+				worker.extranonce1 = extranonce1
+				worker.extranonce_size = extranonce_size
+				
+				# TODO: Make this optional in a way that the version mask can't be necessary
+				stratum_configure(client)
+				
+				success_auth = stratum_authorize(client, worker.worker_name, worker.worker_pass)
+				if not success_auth:
+					client.disconnect_pool()
+					continue
+				
+				#stratum_suggest_difficulty(client, suggest_difficulty)
+				worker.subscribed = True
 			
-			extranonce1, extranonce_size = stratum_subscribe(client)
-			if not extranonce1 or not extranonce_size:
-				client.disconnect_pool()
-				continue
+			while client.connected():
+				
+				read = client.read_until_newline()
+				
+				if read == "":
+					client.disconnect_pool()
+					break
+				
+				method = stratum_parse_method(read)
+				if method == STRATUM_PARSE_ERROR:
+					print(f"[Notify] Error when parsing json: {read}")
+					cnt_error += 1
+				if method == MINING_NOTIFY:
+					job = stratum_parse_notify(read)
+					if job:
+						
+						worker.miner.job = job
+						
+						worker.extranonce2 = None
+						
+						worker.templates += 1
+						
+						worker.miner.mining = False
+						worker.miner.new_job = False
+						
+						calculate_mining_data(worker)
+						
+						print(f"[Notify] Initial header: {worker.miner.bytearray_blockheader.hex()}")
+						
+						worker.miner.pool_difficulty = current_difficulty
+						worker.miner.new_job = True
+						
+				elif method == MINING_SET_DIFFICULTY:
+					difficulty = stratum_parse_set_difficulty(read)
+					if difficulty:
+						current_difficulty = difficulty
+						
+						worker.miner.pool_difficulty = current_difficulty
+				elif method == VERSION_MASK:
+					mask = stratum_parse_version_mask(read)
+					if mask:
+						worker.miner.version_mask = mask
+				elif method == STRATUM_SUCCESS:
+					pass
+					#print("[Notify] Success when submiting!")
+				else:
+					print("[Notify] Unknown JSON")
 			
-			worker.extranonce1 = extranonce1
-			worker.extranonce_size = extranonce_size
-			
-			# TODO: Make this optional in a way that the version mask can't be necessary
-			stratum_configure(client)
-			
-			success_auth = stratum_authorize(client, worker.worker_name, worker.worker_pass)
-			if not success_auth:
-				client.disconnect_pool()
-				continue
-			
-			#stratum_suggest_difficulty(client, suggest_difficulty)
-			worker.subscribed = True
-		
-		while client.connected():
-			
-			read = client.read_until_newline()
-			
-			if read == "":
-				client.disconnect_pool()
-				break
-			
-			method = stratum_parse_method(read)
-			if method == STRATUM_PARSE_ERROR:
-				print(f"[Notify] Error when parsing json: {read}")
-				cnt_error += 1
-			if method == MINING_NOTIFY:
-				job = stratum_parse_notify(read)
-				if job:
-					
-					worker.miner.job = job
-					
-					worker.extranonce2 = None
-					
-					worker.templates += 1
-					
-					worker.miner.mining = False
-					worker.miner.new_job = False
-					
-					calculate_mining_data(worker)
-					
-					print(f"[Notify] Initial header: {worker.miner.bytearray_blockheader.hex()}")
-					
-					worker.miner.pool_difficulty = current_difficulty
-					worker.miner.new_job = True
-					
-			elif method == MINING_SET_DIFFICULTY:
-				difficulty = stratum_parse_set_difficulty(read)
-				if difficulty:
-					current_difficulty = difficulty
-					
-					worker.miner.pool_difficulty = current_difficulty
-			elif method == VERSION_MASK:
-				mask = stratum_parse_version_mask(read)
-				if mask:
-					worker.miner.version_mask = mask
-			elif method == STRATUM_SUCCESS:
-				print("[Notify] Success when submiting!")
-			else:
-				print("[Notify] Unknown JSON")
-				cnt_error += 1
-			if cnt_error > 5:
-				client.disconnect_pool()
-				return
-		
-		time.sleep(1)
+			#time.sleep(1)
+	except:
+		pass
 
 def serve_forever(pool_host, pool_port, btc_address, worker_name, pool_pass, suggested_difficulty, stop_threads):
 	
@@ -137,7 +137,8 @@ def serve_forever(pool_host, pool_port, btc_address, worker_name, pool_pass, sug
 	
 	while(1):
 		start_stratum(client, worker, suggested_difficulty)
-		
+
+'''		
 def run_miner(miner_id, client, worker, stop_thread):
 	
 	print(f"[MINER] Init hashing with miner: {miner_id}")
@@ -223,7 +224,7 @@ def run_miner(miner_id, client, worker, stop_thread):
 		calculate_mining_data(worker)
 		
 		time.sleep(0.5)
-
+'''
 
 import os
 import mimetypes
@@ -278,61 +279,54 @@ print(f"{nonce=:08x} {mask=:08x} {ret} ")
 '''
 
 def run_miner2(miner_id, client, worker, stop_thread, ip):
-	miner: Miner = worker.miner
-	while not stop_thread.is_set():
-			
+	print("[MINER] Started hashing nonces")
+	while not stop_thread.is_set():			
 		miner: Miner = worker.miner
-			
 		if worker.miner == None or not worker.miner.new_job:
 			time.sleep(0.05)
 			continue			
 		miner.mining = True
-	
-		print("[MINER] Started hashing nonces")
-		while not stop_thread.is_set():			
-			print(f"run_miner2", miner.bytearray_blockheader[:8].hex())
-			input_swap = bytes(miner.bytearray_blockheader)  
-			bin = input_swap.hex()
-			no = 	os.urandom(4).hex()#"40000000"#
-			mask = 	"00050000"
-			fields = {'bin': f"{bin}", 'no': f"{no}", 'mask': f"{mask}"}
-			files = {}#{'file': 'example.txt'}  # Make sure this file exists
-
-			# Prepare request
-			body, content_type = encode_multipart_formdata(fields, files)
-			req = urllib.request.Request(f'http://{ip}:8001/params', data=body)
-			req.add_header('Content-Type', content_type)
-			req.add_header('Content-Length', str(len(body)))
-
-			try:
-				# Send it
-				with urllib.request.urlopen(req) as response:
-					raw = response.read().decode('utf-8')  # Decode bytes to string
-					data = json.loads(raw)                 # Parse JSON string to Python dict
-					#print(data)
-		#{'result': 'True', 
-		# 'bin': 'aaac4ee23484886e88d28c58fa7a3ff5c6481786e94db9d67ab67d3a082c0400', 
-		# 'no': '9e11f494', 
-		# 'mask': '00042c08'}
-				if data['result'] == 'True':
-			
-					print("[MINER] SHARE FOUND!")
-					print(data['mask'], data['no'])
-					nonce = int(data['no'], 16)
-			
-					stratum_submit(
-						client, 
-						worker.worker_name, 
-						miner.job.job_id, 
-						worker.extranonce2.zfill(8), 
-						miner.job.ntime,
-						f"{nonce:08x}",
-						#miner.version_mask
-					)
-			except: 
-				time.sleep(5)
+ 
+		print(f"run_miner2", miner.bytearray_blockheader[:8].hex())
+		input_swap = bytes(miner.bytearray_blockheader)  
+		bin = input_swap.hex()
+		no = 	os.urandom(4).hex()#"40000000"#
+		mask = 	"00050000"
+		fields = {'bin': f"{bin}", 'no': f"{no}", 'mask': f"{mask}"}
+		files = {}#{'file': 'example.txt'}  # Make sure this file exists
+		# Prepare request
+		body, content_type = encode_multipart_formdata(fields, files)
+		req = urllib.request.Request(f'http://{ip}:8001/params', data=body)
+		req.add_header('Content-Type', content_type)
+		req.add_header('Content-Length', str(len(body)))
+		try:
+			# Send it
+			with urllib.request.urlopen(req) as response:
+				raw = response.read().decode('utf-8')  # Decode bytes to string
+				data = json.loads(raw)                 # Parse JSON string to Python dict
+				#print(data)
+	#{'result': 'True', 
+	# 'bin': 'aaac4ee23484886e88d28c58fa7a3ff5c6481786e94db9d67ab67d3a082c0400', 
+	# 'no': '9e11f494', 
+	# 'mask': '00042c08'}
+			if data['result'] == 'True':
+		
+				print("[MINER] SHARE FOUND!")
+				print(data['mask'], data['no'])
+				nonce = int(data['no'], 16)
+		
+				stratum_submit(
+					client, 
+					worker.worker_name, 
+					miner.job.job_id, 
+					worker.extranonce2.zfill(8), 
+					miner.job.ntime,
+					f"{nonce:08x}",
+					#miner.version_mask
+				)
+		except: 
+			time.sleep(5)
 		calculate_mining_data(worker)
-	
 		time.sleep(0.5)
 
 def keep_alive(client, worker, stop_thread):
