@@ -23,7 +23,7 @@ running = True
 
 def start_stratum(client, worker, suggest_difficulty):
 	
-	worker.miner = Miner()
+	
 	
 	current_difficulty = suggest_difficulty
 	
@@ -121,6 +121,7 @@ def serve_forever(pool_host, pool_port, btc_address, worker_name, pool_pass, sug
 	
 	client = Client(pool_host, pool_port)
 	worker = Worker()
+	worker.miner = Miner()	
 	
 	worker.worker_name = f"{btc_address}.{worker_name}"
 	worker.worker_pass = pool_pass
