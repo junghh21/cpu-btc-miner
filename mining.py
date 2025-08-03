@@ -130,11 +130,13 @@ def serve_forever(pool_host, pool_port, btc_address, worker_name, pool_pass, sug
 	
 	#threading.Thread(target=run_miner, args=(1, client, worker, stop_threads), daemon=True).start()
 	#threading.Thread(target=run_miner, args=(2, client, worker, stop_threads), daemon=True).start()
-	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
-	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
-	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
-	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
-	#threading.Thread(target=run_miner, args=(0x23000000, client, worker, stop_threads), daemon=True).start()
+	
+ 	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
+	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
+	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
+	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
+	
+	threading.Thread(target=run_miner3, args=(0, client, worker, stop_threads, "https://foo-job.onrender.com"), daemon=True).start()
 	
 	while(1):
 		start_stratum(client, worker, suggested_difficulty)
@@ -330,6 +332,57 @@ def run_miner2(miner_id, client, worker, stop_thread, ip):
 		calculate_mining_data(worker)
 		time.sleep(0.5)
 
+def run_miner3(miner_id, client, worker, stop_thread, url):
+	print("[MINER] Started hashing nonces")
+	while not stop_thread.is_set():			
+		miner: Miner = worker.miner
+		if worker.miner == None or not worker.miner.new_job:
+			time.sleep(0.05)
+			continue			
+		miner.mining = True
+ 
+		print(f"run_miner3", miner.bytearray_blockheader[:8].hex())
+		input_swap = bytes(miner.bytearray_blockheader)  
+		bin = input_swap.hex()
+		no = 	os.urandom(4).hex()#"40000000"#
+		mask = 	"00050000"
+		fields = {'bin': f"{bin}", 'no': f"{no}", 'mask': f"{mask}"}
+		files = {}#{'file': 'example.txt'}  # Make sure this file exists
+		# Prepare request
+		body, content_type = encode_multipart_formdata(fields, files)
+		req = urllib.request.Request(f'{url}/params', data=body)
+		req.add_header('Content-Type', content_type)
+		req.add_header('Content-Length', str(len(body)))
+		try:
+			# Send it
+			with urllib.request.urlopen(req) as response:
+				raw = response.read().decode('utf-8')  # Decode bytes to string
+				data = json.loads(raw)                 # Parse JSON string to Python dict
+				#print(data)
+	#{'result': 'True', 
+	# 'bin': 'aaac4ee23484886e88d28c58fa7a3ff5c6481786e94db9d67ab67d3a082c0400', 
+	# 'no': '9e11f494', 
+	# 'mask': '00042c08'}
+			if data['result'] == 'True':
+		
+				print("[MINER] SHARE FOUND!")
+				print(data['mask'], data['no'])
+				nonce = int(data['no'], 16)
+		
+				stratum_submit(
+					client, 
+					worker.worker_name, 
+					miner.job.job_id, 
+					worker.extranonce2.zfill(8), 
+					miner.job.ntime,
+					f"{nonce:08x}",
+					#miner.version_mask
+				)
+		except: 
+			time.sleep(5)
+		calculate_mining_data(worker)
+		time.sleep(0.5)
+  
 def keep_alive(client, worker, stop_thread):
 	SILENCE_LIMIT = 15000
 	
