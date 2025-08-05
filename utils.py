@@ -104,7 +104,7 @@ def calculate_mining_data(worker):
 		worker.extranonce2 = get_random_extranonce2(extranonce2_size)
 	else:
 		worker.extranonce2 = get_next_extranonce2(extranonce2_size, worker.extranonce2)
-
+	worker.extranonce2 = '00000000'
 	# Building coinbase
 	coinbase = mine_job.coinb1 + worker.extranonce1 + worker.extranonce2 + mine_job.coinb2
 	#print("[Header] Coinbase: ", coinbase)

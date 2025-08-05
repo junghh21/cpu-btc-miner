@@ -131,17 +131,17 @@ def serve_forever(pool_host, pool_port, btc_address, worker_name, pool_pass, sug
 	#threading.Thread(target=run_miner, args=(1, client, worker, stop_threads), daemon=True).start()
 	#threading.Thread(target=run_miner, args=(2, client, worker, stop_threads), daemon=True).start()
 	
- 	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
-	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
-	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
-	#threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
+	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
+	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "168.107.10.52"), daemon=True).start()
+	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
+	threading.Thread(target=run_miner2, args=(0, client, worker, stop_threads, "138.2.119.214"), daemon=True).start()
 	
-	threading.Thread(target=run_miner3, args=(0, client, worker, stop_threads, "https://foo-job.onrender.com"), daemon=True).start()
+	#threading.Thread(target=run_miner3, args=(0, client, worker, stop_threads, "https://foo-job.onrender.com"), daemon=True).start()
 	
 	while(1):
 		start_stratum(client, worker, suggested_difficulty)
 
-'''		
+#'''		
 def run_miner(miner_id, client, worker, stop_thread):
 	
 	print(f"[MINER] Init hashing with miner: {miner_id}")
@@ -201,7 +201,7 @@ def run_miner(miner_id, client, worker, stop_thread):
 					hashes_per_second = 0
 				
 				print("[MINER] SHARE FOUND!")
-				print(f"-> Nonce: {nonce}")
+				print(f"-> Nonce: {nonce:08x}")
 				print(f"-> Miner who found: {miner_id}")
 				print(f"-> Share difficulty: {difficulty:.8f}")
 				print(f"-> Pool difficulty: {miner.pool_difficulty}")
@@ -227,7 +227,7 @@ def run_miner(miner_id, client, worker, stop_thread):
 		calculate_mining_data(worker)
 		
 		time.sleep(0.5)
-'''
+#'''
 
 import os
 import mimetypes
